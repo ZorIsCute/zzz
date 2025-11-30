@@ -1,0 +1,57 @@
+
+local cfg = getgenv().TriggerSettings
+if not cfg then
+    warn("TriggerSettings missing!")
+    return
+end
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+
+local ShootRemote = game:GetService("ReplicatedStorage").Remotes:WaitForChild("ShootGun")
+
+local function IsVisible(part)
+    if not cfg.WallCheck then return true end
+
+    local origin = Camera.CFrame.Position
+    local direction = part.Position - origin
+
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {LocalPlayer.Character}
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+
+    local result = workspace:Raycast(origin, direction, params)
+    return result and result.Instance and result.Instance:IsDescendantOf(part.Parent)
+end
+
+local function GetHitPart(model)
+    if cfg.HitPart == "ClosestPoint" then
+        return model:FindFirstChild("HumanoidRootPart")
+    end
+    return model:FindFirstChild(cfg.HitPart)
+end
+
+task.spawn(function()
+    while task.wait(cfg.Delay) do
+        local t = Mouse.Target
+        if not t then continue end
+
+        local model = t:FindFirstAncestorOfClass("Model")
+        if not model then continue end
+
+        if model == LocalPlayer.Character then continue end
+
+        local humanoid = model:FindFirstChildWhichIsA("Humanoid")
+        if not humanoid then continue end
+
+        local hitPart = GetHitPart(model)
+        if not hitPart then continue end
+
+        if not IsVisible(hitPart) then continue end
+
+        -- Fire your game’s ShootGun remote
+        ShootRemote:FireServer(nil, nil, hitPart, nil)
+    end
+end)
